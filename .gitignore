@@ -1,0 +1,133 @@
+# Regles centralisees, applicables a tous les exercices.
+# Les sources Dart, notebooks, HDL, XDC, Tcl et pubspec restent versionnables.
+
+# Python et Jupyter
+__pycache__/
+.venv/
+venv/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Fichiers locaux et Flutter / Dart
+*.class
+*.log
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+*.iml
+*.ipr
+*.iws
+.idea/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+coverage/
+app.*.symbols
+app.*.map.json
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+.flutter-plugins
+
+# Android (regles limitees aux dossiers Android)
+**/android/**/gradle-wrapper.jar
+**/android/.gradle
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+**/android/**/.cxx/
+**/android/**/key.properties
+**/android/**/*.keystore
+**/android/**/*.jks
+
+# iOS
+**/ios/**/dgph
+**/ios/**/*.mode1v3
+**/ios/**/*.mode2v3
+**/ios/**/*.moved-aside
+**/ios/**/*.pbxuser
+**/ios/**/*.perspectivev3
+**/ios/**/*sync/
+**/ios/**/.sconsign.dblite
+**/ios/**/.tags*
+**/ios/**/.vagrant/
+**/ios/**/DerivedData/
+**/ios/**/Icon?
+**/ios/**/Pods/
+**/ios/**/.symlinks/
+**/ios/**/profile
+**/ios/**/xcuserdata
+**/ios/**/.generated/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/**/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+!**/ios/**/default.mode1v3
+!**/ios/**/default.mode2v3
+!**/ios/**/default.pbxuser
+!**/ios/**/default.perspectivev3
+
+# macOS
+**/macos/**/Flutter/ephemeral/
+**/macos/**/Pods/
+**/macos/**/dgph
+**/macos/**/xcuserdata/
+
+# Linux et Windows
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+**/windows/**/*.suo
+**/windows/**/*.user
+**/windows/**/*.userosscache
+**/windows/**/*.sln.docstates
+**/windows/**/x64/
+**/windows/**/x86/
+**/windows/**/*.[Cc]ache
+!**/windows/**/*.[Cc]ache/
+
+# Vivado : caches, produits generes et journaux.
+# Conserver les projets .xpr et les sources .srcs/, .vhd, .vhdl, .xdc, .tcl.
+# Ces exclusions restent prioritaires sur l'exception Windows *.cache/.
+.Xil/
+.cache/
+*.cache/
+.gen/
+*.gen/
+.hw/
+*.hw/
+.ip_user_files/
+*.ip_user_files/
+.runs/
+*.runs/
+.sim/
+*.sim/
+*.jou
+*.jou.backup
+*.log.backup
+*.str
+
+# Donnees locales de l'outil Java Upgrade (portee d'origine conservee).
+/.github/modernize/java-upgrade/
