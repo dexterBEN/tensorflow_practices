@@ -129,5 +129,5 @@ app.*.map.json
 *.log.backup
 *.str
 
-# Donnees locales de l'outil Java Upgrade (portee d'origine conservee).
-/.github/modernize/java-upgrade/
+# Journaux de session generes par les hooks Java Upgrade.
+/.github/modernize/java-upgrade/hooks/*.json
