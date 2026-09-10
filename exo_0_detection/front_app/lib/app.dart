@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dashboard/dashboard_page.dart';
+import 'video/repository/video_repository.dart';
+import 'video/repository/webrtc_video_repository.dart';
 import 'detection/bloc/detection_bloc.dart';
 import 'detection/bloc/detection_event.dart';
 import 'detection/repository/detection_repository.dart';
@@ -11,8 +13,16 @@ class DetectionApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RepositoryProvider<DetectionRepository>(
-      create: (_) => MockDetectionRepository(),
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<DetectionRepository>(
+          create: (_) => MockDetectionRepository(),
+        ),
+        RepositoryProvider<VideoRepository>(
+          create: (_) => WebRtcVideoRepository(),
+          dispose: (repository) => repository.dispose(),
+        ),
+      ],
       // DetectionBloc owns the connection and disconnects when disposed.
       child: BlocProvider(
         create: (context) =>

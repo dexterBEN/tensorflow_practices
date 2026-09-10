@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'widgets/detection_panel.dart';
 import 'widgets/status_panel.dart';
-import 'widgets/video_view.dart';
+import '../video/view/video_view.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
