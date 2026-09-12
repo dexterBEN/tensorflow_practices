@@ -64,14 +64,14 @@ tensorflow_practices/
     ├── front_app/
     │   └── application Flutter Web
     └── notebooks/
-        ├── person_detection.ipynb
+        ├── camera_test.ipynb
         └── webrtc_stream.ipynb
 ```
 
 Répartition actuelle :
 
 ```text
-person_detection.ipynb
+camera_test.ipynb
     └── tests caméra / OpenCV
 
 webrtc_stream.ipynb
