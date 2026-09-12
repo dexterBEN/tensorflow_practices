@@ -131,3 +131,6 @@ app.*.map.json
 
 # Journaux de session generes par les hooks Java Upgrade.
 /.github/modernize/java-upgrade/hooks/*.json
+
+# Wheels TFLite generes pour le PYNQ
+/exo_0_detection/artifacts/tflite_runtime/*.whl
