@@ -1,5 +1,10 @@
 # Exo 0 — Person Detection : récapitulatif détaillé jusqu'au flux vidéo WebRTC fonctionnel
 
+## Architecture overview
+
+<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/6b031415-fdff-406a-9b32-8ac444741e31" />
+
+
 ## 1. Objectif initial
 
 L’objectif du projet `exo_0_detection` est de construire progressivement une petite application de détection de personne autour d’une **PYNQ-Z2**, d’une **caméra USB Tenveo**, de **Flutter Web** et, à terme, de **TensorFlow / TensorFlow Lite**.
