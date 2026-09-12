@@ -1,0 +1,38 @@
+--- a/tensorflow/lite/tools/cmake/download_toolchains.sh
++++ b/tensorflow/lite/tools/cmake/download_toolchains.sh
+@@ -30,2 +30,7 @@
+ case $1 in
++  armhf_vfpv3)
++    # Reuse the original GCC ARM 8.3 download and include paths.
++    ARMHF_CONFIG=$(bash "${SCRIPT_DIR}/download_toolchains.sh" armhf)
++    echo "${ARMHF_CONFIG//neon-vfpv4/neon-vfpv3}"
++    ;;
+ 	armhf)
+--- a/tensorflow/lite/tools/pip_package/build_pip_package_with_cmake.sh
++++ b/tensorflow/lite/tools/pip_package/build_pip_package_with_cmake.sh
+@@ -76,3 +76,16 @@
++    ;;
++  armhf_vfpv3)
++    eval $(${TENSORFLOW_LITE_DIR}/tools/cmake/download_toolchains.sh "${TENSORFLOW_TARGET}")
++    ARMCC_FLAGS="${ARMCC_FLAGS} -I${PYBIND11_INCLUDE} -I${NUMPY_INCLUDE}"
++    cmake \
++      -DCMAKE_C_COMPILER=${ARMCC_PREFIX}gcc \
++      -DCMAKE_CXX_COMPILER=${ARMCC_PREFIX}g++ \
++      -DCMAKE_C_FLAGS="${ARMCC_FLAGS}" \
++      -DCMAKE_CXX_FLAGS="${ARMCC_FLAGS}" \
++      -DCMAKE_SYSTEM_NAME=Linux \
++      -DCMAKE_SYSTEM_PROCESSOR=armv7 \
++      -DTFLITE_ENABLE_XNNPACK=OFF \
++      "${TENSORFLOW_LITE_DIR}"
+     ;;
+   rpi0)
+     eval $(${TENSORFLOW_LITE_DIR}/tools/cmake/download_toolchains.sh "${TENSORFLOW_TARGET}")
+@@ -141,3 +154,8 @@
++    ;;
++  armhf_vfpv3)
++    WHEEL_PLATFORM_NAME="${WHEEL_PLATFORM_NAME:-linux-armv7l}"
++    ${PYTHON} setup.py bdist --plat-name=${WHEEL_PLATFORM_NAME} \
++                       bdist_wheel --plat-name=${WHEEL_PLATFORM_NAME}
+     ;;
+   rpi0)
+     WHEEL_PLATFORM_NAME="${WHEEL_PLATFORM_NAME:-linux-armv6l}"
