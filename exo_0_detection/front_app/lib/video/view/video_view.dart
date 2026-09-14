@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../repository/video_repository.dart';
+import '../../detection/bloc/detection_bloc.dart';
+import '../../detection/bloc/detection_state.dart';
+import 'detection_overlay.dart';
 
 class VideoView extends StatefulWidget {
   const VideoView({super.key});
@@ -104,6 +107,16 @@ class _VideoViewState extends State<VideoView> {
                   ),
                 ],
               ),
+            ),
+          if (_hasStream)
+            BlocBuilder<DetectionBloc, DetectionState>(
+              builder: (context, state) {
+                final result = state.detection;
+                if (!state.isConnected || result == null) {
+                  return const SizedBox.shrink();
+                }
+                return DetectionOverlay(result: result);
+              },
             ),
           Positioned(
             top: 8,

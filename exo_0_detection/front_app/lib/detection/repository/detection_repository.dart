@@ -1,8 +1,8 @@
-import '../model/detection.dart';
+import '../model/detection_result.dart';
 
 abstract class DetectionRepository {
   /// Subscribe after connect completes. Carries metadata, never video frames.
-  Stream<Detection> get detections;
+  Stream<DetectionResult> get detections;
 
   Future<void> connect();
 

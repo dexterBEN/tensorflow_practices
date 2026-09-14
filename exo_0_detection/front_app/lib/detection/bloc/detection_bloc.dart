@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../model/detection.dart';
+import '../model/detection_result.dart';
 import '../repository/detection_repository.dart';
 import 'detection_event.dart';
 import 'detection_state.dart';
@@ -15,7 +15,7 @@ class DetectionBloc extends Bloc<DetectionEvent, DetectionState> {
   }
 
   final DetectionRepository _repository;
-  StreamSubscription<Detection>? _subscription;
+  StreamSubscription<DetectionResult>? _subscription;
   bool _closing = false;
 
   void _enqueue(DetectionEvent event) {

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:front_app/app.dart';
+import 'package:front_app/detection/repository/mock_detection_repository.dart';
+import 'package:front_app/detection/model/detection_result.dart';
 import 'package:front_app/detection/bloc/detection_bloc.dart';
 import 'package:front_app/detection/bloc/detection_event.dart';
 import 'package:front_app/detection/bloc/detection_state.dart';
@@ -9,13 +11,13 @@ import 'package:front_app/detection/model/detection.dart';
 import 'package:front_app/detection/repository/detection_repository.dart';
 
 class TestRepository implements DetectionRepository {
-  final controller = StreamController<Detection>.broadcast();
+  final controller = StreamController<DetectionResult>.broadcast();
   final gate = Completer<void>();
   bool disconnected = false;
   bool fail = false;
 
   @override
-  Stream<Detection> get detections => controller.stream;
+  Stream<DetectionResult> get detections => controller.stream;
   @override
   Future<void> connect() async {
     await gate.future;
@@ -33,13 +35,15 @@ void main() {
   testWidgets('Mock dashboard starts, stops, restarts and disposes', (
     tester,
   ) async {
-    await tester.pumpWidget(const DetectionApp());
+    await tester.pumpWidget(
+      DetectionApp(detectionRepositoryFactory: () => MockDetectionRepository()),
+    );
     await tester.pump();
-    expect(find.text('Mock detection: ONLINE'), findsOneWidget);
+    expect(find.text('PYNQ detection: ONLINE'), findsOneWidget);
     await tester.pump(const Duration(seconds: 2));
     await tester.pump();
     expect(find.text('Confidence: 94.0 %'), findsOneWidget);
-    expect(find.text('x: 0.30'), findsOneWidget);
+    expect(find.text('bbox: x1=192, y1=72, x2=352, y2=384'), findsOneWidget);
     expect(find.text('Video stream not connected'), findsOneWidget);
     await tester.tap(find.text('Stop'));
     await tester.pump();
@@ -62,7 +66,9 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const DetectionApp());
+    await tester.pumpWidget(
+      DetectionApp(detectionRepositoryFactory: () => MockDetectionRepository()),
+    );
     await tester.pump();
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());

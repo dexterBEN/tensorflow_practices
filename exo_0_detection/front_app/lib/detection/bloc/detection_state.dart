@@ -1,4 +1,4 @@
-import '../model/detection.dart';
+import '../model/detection_result.dart';
 
 enum DetectionStatus { initial, connecting, connected, disconnected, failure }
 
@@ -10,7 +10,7 @@ class DetectionState {
   });
 
   final DetectionStatus status;
-  final Detection? detection;
+  final DetectionResult? detection;
   final String? error;
   bool get isConnected => status == DetectionStatus.connected;
 }

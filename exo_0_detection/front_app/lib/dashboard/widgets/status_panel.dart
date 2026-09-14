@@ -19,7 +19,7 @@ class StatusPanel extends StatelessWidget {
         Chip(
           avatar: Icon(state.isConnected ? Icons.cloud_done : Icons.cloud_off),
           label: Text(
-            'Mock detection: ${state.isConnected ? 'ONLINE' : state.status.name.toUpperCase()}',
+            'PYNQ detection: ${state.isConnected ? 'ONLINE' : state.status.name.toUpperCase()}',
           ),
         ),
         FilledButton.icon(

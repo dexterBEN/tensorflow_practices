@@ -21,23 +21,32 @@ class DetectionPanel extends StatelessWidget {
               Text('Detection', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 16),
               Text('Connection status: ${state.status.name.toUpperCase()}'),
-              const Text('Source: simulated metadata (mock)'),
+              const Text('Source: PYNQ-Z2'),
               const SizedBox(height: 16),
               if (state.error != null) Text('Error: ${state.error}'),
               if (detection == null)
                 const Text('No detection received')
               else ...[
-                Text('Label: ${detection.label}'),
+                Text('Persons: ${detection.persons.length}'),
                 Text(
-                  'Confidence: ${(detection.confidence * 100).toStringAsFixed(1)} %',
+                  'Status: ${detection.persons.isEmpty ? 'NO DETECTION' : 'DETECTED'}',
                 ),
-                const Text('Status: DETECTED'),
-                const SizedBox(height: 16),
-                const Text('Bounding box (normalized)'),
-                Text('x: ${detection.x.toStringAsFixed(2)}'),
-                Text('y: ${detection.y.toStringAsFixed(2)}'),
-                Text('width: ${detection.width.toStringAsFixed(2)}'),
-                Text('height: ${detection.height.toStringAsFixed(2)}'),
+                Text(
+                  'Inference time: ${detection.inferenceMs.toStringAsFixed(1)} ms',
+                ),
+                Text(
+                  'Frame: ${detection.frame.width} × ${detection.frame.height}',
+                ),
+                for (final person in detection.persons) ...[
+                  const SizedBox(height: 16),
+                  Text('Label: ${person.label}'),
+                  Text(
+                    'Confidence: ${(person.confidence * 100).toStringAsFixed(1)} %',
+                  ),
+                  Text(
+                    'bbox: x1=${person.bbox.x1}, y1=${person.bbox.y1}, x2=${person.bbox.x2}, y2=${person.bbox.y2}',
+                  ),
+                ],
               ],
             ],
           ),

@@ -6,17 +6,21 @@ import 'video/repository/webrtc_video_repository.dart';
 import 'detection/bloc/detection_bloc.dart';
 import 'detection/bloc/detection_event.dart';
 import 'detection/repository/detection_repository.dart';
-import 'detection/repository/mock_detection_repository.dart';
+import 'detection/repository/websocket_detection_repository.dart';
 
 class DetectionApp extends StatelessWidget {
-  const DetectionApp({super.key});
+  const DetectionApp({super.key, this.detectionRepositoryFactory});
+
+  final DetectionRepository Function()? detectionRepositoryFactory;
 
   @override
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider<DetectionRepository>(
-          create: (_) => MockDetectionRepository(),
+          create: (_) =>
+              detectionRepositoryFactory?.call() ??
+              WebSocketDetectionRepository(),
         ),
         RepositoryProvider<VideoRepository>(
           create: (_) => WebRtcVideoRepository(),

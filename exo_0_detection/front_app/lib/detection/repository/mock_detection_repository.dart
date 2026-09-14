@@ -1,5 +1,5 @@
 import 'dart:async';
-import '../model/detection.dart';
+import '../model/detection_result.dart';
 import 'detection_repository.dart';
 
 class MockDetectionRepository implements DetectionRepository {
@@ -10,11 +10,11 @@ class MockDetectionRepository implements DetectionRepository {
   }
 
   final Duration interval;
-  StreamController<Detection>? _controller;
+  StreamController<DetectionResult>? _controller;
   Timer? _timer;
 
   @override
-  Stream<Detection> get detections {
+  Stream<DetectionResult> get detections {
     final controller = _controller;
     if (controller == null) throw StateError('Connect before subscribing.');
     return controller.stream;
@@ -23,17 +23,20 @@ class MockDetectionRepository implements DetectionRepository {
   @override
   Future<void> connect() async {
     if (_controller != null) return;
-    final controller = StreamController<Detection>.broadcast();
+    final controller = StreamController<DetectionResult>.broadcast();
     _controller = controller;
     _timer = Timer.periodic(interval, (_) {
       controller.add(
-        Detection(
-          label: 'person',
-          confidence: 0.94,
-          x: 0.30,
-          y: 0.15,
-          width: 0.25,
-          height: 0.65,
+        DetectionResult(
+          frame: const FrameSize(width: 640, height: 480),
+          inferenceMs: 1200,
+          persons: const [
+            PersonDetection(
+              label: 'person',
+              confidence: 0.94,
+              bbox: BoundingBox(x1: 192, y1: 72, x2: 352, y2: 384),
+            ),
+          ],
         ),
       );
     });

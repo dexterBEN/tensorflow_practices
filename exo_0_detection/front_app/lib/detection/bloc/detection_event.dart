@@ -1,4 +1,4 @@
-import '../model/detection.dart';
+import '../model/detection_result.dart';
 
 sealed class DetectionEvent {
   const DetectionEvent();
@@ -14,7 +14,7 @@ final class DetectionStopped extends DetectionEvent {
 
 final class DetectionReceived extends DetectionEvent {
   const DetectionReceived(this.detection);
-  final Detection detection;
+  final DetectionResult detection;
 }
 
 final class DetectionErrorOccurred extends DetectionEvent {
