@@ -1,31 +1,31 @@
-# Exo 0 — Person Detection : récapitulatif détaillé jusqu'au flux vidéo WebRTC fonctionnel
+# Exo 0 — Person Detection: detailed recap up to a working WebRTC video stream
 
 ## Architecture overview
 
 <img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/6b031415-fdff-406a-9b32-8ac444741e31" />
 
 
-## 1. Objectif initial
+## 1. Initial objective
 
-L’objectif du projet `exo_0_detection` est de construire progressivement une petite application de détection de personne autour d’une **PYNQ-Z2**, d’une **caméra USB Tenveo**, de **Flutter Web** et, à terme, de **TensorFlow / TensorFlow Lite**.
+The objective of the `exo_0_detection` project is to progressively build a small person detection application using a **PYNQ-Z2**, a **Tenveo USB camera**, **Flutter Web** and, eventually, **TensorFlow / TensorFlow Lite**.
 
-L’idée générale est la suivante :
+The general idea is as follows:
 
 ```text
-Caméra USB
+USB camera
    │
    ▼
 PYNQ-Z2
    │
-   ├── Capture vidéo
-   ├── Traitement / détection de personne
-   └── Envoi des résultats
+   ├── Video capture
+   ├── Processing / person detection
+   └── Sending results
           │
           ▼
-     Application Flutter Web
+     Flutter Web application
 ```
 
-Cependant, afin de ne pas mélanger plusieurs problèmes à la fois, le travail a été volontairement séparé en deux flux indépendants :
+However, to avoid mixing several problems at once, the work was deliberately split into two independent streams:
 
 ```text
                       Flutter Web
@@ -33,70 +33,70 @@ Cependant, afin de ne pas mélanger plusieurs problèmes à la fois, le travail 
              ┌─────────────┴─────────────┐
              │                           │
              ▼                           ▼
-        Flux vidéo                  Détection
-         WebRTC                     de personne
+        Video stream                  Detection
+         WebRTC                     of persons
              │                           │
          VideoView                  DetectionBloc
              │                           │
          PYNQ-Z2                DetectionRepository
                                          │
-                                  Mock au départ
+                                  Mock initially
 ```
 
-Le premier objectif concret a donc été :
+The first concrete objective was therefore:
 
-> **Afficher dans Flutter Web le flux vidéo réel de la caméra USB branchée sur la PYNQ-Z2, avec une latence faible, avant de commencer l’intégration TensorFlow.**
+> **Display the live video stream from the USB camera connected to the PYNQ-Z2 in Flutter Web, with low latency, before starting TensorFlow integration.**
 
-À l’état actuel :
+At the current stage:
 
-- le flux vidéo réel fonctionne ;
-- Flutter affiche correctement la caméra ;
-- le statut vidéo passe à `Connected` ;
-- la partie détection est encore simulée avec un `MockDetectionRepository` ;
-- TensorFlow n’est pas encore intégré ;
-- le FPGA/PL n’est pas encore utilisé pour le traitement vidéo.
+- the live video stream works;
+- Flutter displays the camera feed correctly;
+- the video status changes to `Connected`;
+- detection is still simulated with a `MockDetectionRepository`;
+- TensorFlow is not integrated yet;
+- the FPGA/PL is not used for video processing yet.
 
-## 2. Structure du projet
+## 2. Project structure
 
 ```text
 tensorflow_practices/
 └── exo_0_detection/
     ├── front_app/
-    │   └── application Flutter Web
+    │   └── Flutter Web application
     └── notebooks/
         ├── camera_test.ipynb
         └── webrtc_stream.ipynb
 ```
 
-Répartition actuelle :
+Current responsibilities:
 
 ```text
 camera_test.ipynb
-    └── tests caméra / OpenCV
+    └── camera / OpenCV tests
 
 webrtc_stream.ipynb
-    └── capture caméra + GStreamer + WebRTC + signaling
+    └── camera capture + GStreamer + WebRTC + signaling
 
 front_app/
-    ├── UI Flutter
+    ├── Flutter UI
     ├── VideoView
     ├── WebRtcVideoRepository
     ├── DetectionBloc
     └── MockDetectionRepository
 ```
 
-## 3. Première étape : valider l’accès à la caméra
+## 3. First step: validating camera access
 
-La caméra Tenveo USB est visible sous Linux avec :
+The Tenveo USB camera is visible on Linux as:
 
 ```text
 /dev/video0
 /dev/video1
 ```
 
-Le test OpenCV a montré que `/dev/video0` est exploitable alors que `/dev/video1` ne fonctionne pas correctement avec OpenCV.
+The OpenCV test showed that `/dev/video0` is usable, while `/dev/video1` does not work correctly with OpenCV.
 
-Résultat du test :
+Test result:
 
 ```text
 Opened: True
@@ -104,10 +104,10 @@ Captured: True
 Shape: (480, 640, 3)
 ```
 
-Chaîne validée :
+Validated pipeline:
 
 ```text
-Caméra Tenveo USB
+Tenveo USB camera
        │
        ▼
    /dev/video0
@@ -116,57 +116,57 @@ Caméra Tenveo USB
     OpenCV
        │
        ▼
-   Frame valide
+   Valid frame
 ```
 
-### Première image sombre
+### Dark first image
 
-La première image était très sombre. Le problème venait du temps nécessaire à l’auto-exposition de la caméra.
+The first image was very dark. The issue was caused by the time needed for the camera's auto-exposure to adjust.
 
-Solution :
+Solution:
 
-1. ouvrir la caméra ;
-2. attendre environ 2 secondes ;
-3. ignorer quelques premières frames ;
-4. afficher ensuite une frame stabilisée.
+1. open the camera;
+2. wait about 2 seconds;
+3. skip the first few frames;
+4. then display a stabilized frame.
 
-## 4. Permissions Linux sur `/dev/video0`
+## 4. Linux permissions on `/dev/video0`
 
-L’utilisateur `xilinx` n’avait pas initialement les droits nécessaires.
+The `xilinx` user initially lacked the required permissions.
 
-Le périphérique était associé au groupe `video`. La bonne solution a été d’ajouter l’utilisateur au groupe :
+The device belonged to the `video` group. The correct solution was to add the user to that group:
 
 ```bash
 sudo usermod -aG video xilinx
 ```
 
-Après reconnexion :
+After logging in again:
 
 ```text
 /dev/video0
    │
-   └── groupe : video
+   └── group: video
            │
            ▼
         xilinx
            │
            ▼
-    accès caméra OK
+    camera access OK
 ```
 
-Cela évite une mauvaise pratique comme `chmod 777`.
+This avoids bad practices such as `chmod 777`.
 
-## 5. Choix du protocole vidéo
+## 5. Choosing the video protocol
 
-Trois options ont été étudiées :
+Three options were considered:
 
-- **MJPEG** : simple à mettre en place, mais moins adapté à une application faible latence finale ;
-- **RTSP** : très courant côté vidéo, mais non lisible directement par un navigateur Web ;
-- **WebRTC** : faible latence et support natif navigateur.
+- **MJPEG**: easy to set up, but less suited to the final low-latency application;
+- **RTSP**: very common for video, but cannot be played directly by a web browser;
+- **WebRTC**: low latency and native browser support.
 
-Le choix final a été **WebRTC**.
+The final choice was **WebRTC**.
 
-Le signaling est séparé :
+Signaling is separate:
 
 ```text
              SIGNALING
@@ -178,11 +178,11 @@ Flutter  <──────────────  PYNQ
            WebRTC / RTP
 ```
 
-Le WebSocket ne transporte pas les images ; il transporte seulement SDP et ICE.
+The WebSocket does not carry images; it only carries SDP and ICE.
 
-## 6. Installation et validation de GStreamer
+## 6. Installing and validating GStreamer
 
-GStreamer n’était pas totalement prêt sur le PYNQ. Les composants nécessaires ont été installés, notamment :
+GStreamer was not fully set up on the PYNQ. The required components were installed, including:
 
 ```text
 gstreamer1.0-tools
@@ -197,13 +197,13 @@ gir1.2-gst-plugins-bad-1.0
 gstreamer1.0-nice
 ```
 
-Version :
+Version:
 
 ```text
 GStreamer 1.20.1
 ```
 
-Plugins validés :
+Validated plugins:
 
 ```text
 webrtcbin     OK
@@ -221,48 +221,48 @@ h264parse     OK
 rtph264pay    OK
 ```
 
-## 7. Tests de performances vidéo
+## 7. Video performance tests
 
-Avant WebRTC, plusieurs pipelines ont été testés.
+Several pipelines were tested before WebRTC.
 
-### MJPEG direct
+### Direct MJPEG
 
-Caméra :
+Camera:
 
 ```text
 640x480 @ 30 FPS
 ```
 
-Résultat : environ `29.5 FPS`.
+Result: about `29.5 FPS`.
 
 ### VP8
 
-Pipeline :
+Pipeline:
 
 ```text
 MJPEG → jpegdec → videoconvert → I420 → vp8enc
 ```
 
-Résultats :
+Results:
 
 ```text
-~20 FPS en 640x480
-~22.5 FPS en 640x360
+~20 FPS at 640x480
+~22.5 FPS at 640x360
 ```
 
-### H.264 avec x264
+### H.264 with x264
 
-Pipeline :
+Pipeline:
 
 ```text
 MJPEG → jpegdec → videoconvert → I420 → x264enc
 ```
 
-Résultat : environ `25 FPS`.
+Result: about `25 FPS`.
 
-En limitant à **15 FPS**, le pipeline tenait le temps réel de manière confortable.
+When limited to **15 FPS**, the pipeline comfortably maintained real-time operation.
 
-Pipeline retenu :
+Selected pipeline:
 
 ```text
 v4l2src /dev/video0
@@ -302,7 +302,7 @@ MJPEG 640x480 @ 30 FPS
      WebRTC
 ```
 
-Paramètres importants :
+Important parameters:
 
 ```text
 bitrate=800
@@ -312,11 +312,11 @@ speed-preset=ultrafast
 profile=constrained-baseline
 ```
 
-Ce choix garde aussi de la marge CPU pour la future détection TensorFlow.
+This choice also leaves CPU headroom for future TensorFlow detection.
 
-## 8. Obstacle majeur : liaison RTP → `webrtcbin`
+## 8. Major obstacle: linking RTP → `webrtcbin`
 
-La première approche consistait à tout construire avec `Gst.parse_launch(...)`, mais GStreamer refusait de relier automatiquement le payloader RTP à `webrtcbin`.
+The first approach was to build everything with `Gst.parse_launch(...)`, but GStreamer refused to automatically link the RTP payloader to `webrtcbin`.
 
 ```text
 rtph264pay
@@ -326,11 +326,11 @@ rtph264pay
 webrtcbin
 ```
 
-### Technique de débogage
+### Debugging technique
 
-Les pads et caps ont été inspectés séparément.
+The pads and caps were inspected separately.
 
-`webrtcbin` exposait :
+`webrtcbin` exposed:
 
 ```text
 sink_%u
@@ -339,7 +339,7 @@ presence: request
 caps: application/x-rtp
 ```
 
-Le payloader exposait bien :
+The payloader did expose:
 
 ```text
 application/x-rtp
@@ -348,11 +348,11 @@ encoding-name=H264
 clock-rate=90000
 ```
 
-Les deux étaient donc compatibles.
+The two were therefore compatible.
 
 ### Solution
 
-Créer `webrtcbin` séparément, demander son request pad et relier manuellement :
+Create `webrtcbin` separately, request its request pad and link manually:
 
 ```python
 sink_pad = webrtc.request_pad_simple("sink_%u")
@@ -360,7 +360,7 @@ src_pad = payloader.get_static_pad("src")
 result = src_pad.link(sink_pad)
 ```
 
-Résultat :
+Result:
 
 ```text
 GST_PAD_LINK_OK
@@ -370,28 +370,28 @@ WebRTC sink pad: sink_0
 RTP -> WebRTC: ok
 ```
 
-## 9. Mise en place du signaling WebSocket
+## 9. Setting up WebSocket signaling
 
-Serveur Python sur la PYNQ :
+Python server on the PYNQ:
 
 ```text
 ws://0.0.0.0:8765
 ```
 
-Flutter se connecte à :
+Flutter connects to:
 
 ```text
 ws://192.168.200.111:8765
 ```
 
-Rôles :
+Roles:
 
 ```text
 PYNQ = offerer
 Flutter = answerer
 ```
 
-Séquence :
+Sequence:
 
 ```text
 Flutter                                PYNQ
@@ -405,66 +405,66 @@ Flutter                                PYNQ
    │◄──────── ICE Candidates ────────────│
    │───────── ICE Candidates ────────────►│
    │                                     │
-   │========== WebRTC média =============│
+   │========== WebRTC media =============│
 ```
 
-## 10. Problème de lifecycle Jupyter
+## 10. Jupyter lifecycle issue
 
-Le serveur WebSocket avait parfois été créé avant une redéfinition de `handle_client`. Jupyter conservait l’ancienne référence.
+The WebSocket server had sometimes been created before `handle_client` was redefined. Jupyter kept the old reference.
 
-La procédure de test est donc devenue :
+The testing procedure therefore became:
 
 ```text
 Restart Kernel
     ↓
 Run All
     ↓
-attendre le démarrage du serveur
+wait for the server to start
     ↓
-lancer Flutter
+start Flutter
 ```
 
-Cela garantit un état propre.
+This ensures a clean state.
 
-## 11. Bug `pipeline_started` non défini
+## 11. Undefined `pipeline_started` bug
 
-Erreur :
+Error:
 
 ```text
 NameError: name 'pipeline_started' is not defined
 ```
 
-Le handler utilisait la variable sans initialisation.
+The handler used the variable without initializing it.
 
-Solution :
+Solution:
 
 ```python
 pipeline_started = False
 ```
 
-avant la définition du handler.
+before defining the handler.
 
-## 12. Gestion du reload Flutter
+## 12. Handling Flutter reloads
 
-Lors d’un refresh, le serveur affichait :
+During a refresh, the server displayed:
 
 ```text
 ConnectionClosedError
 received 1005
 ```
 
-Ce n’était pas un crash du pipeline, mais la fermeture de la WebSocket par le navigateur.
+This was not a pipeline crash, but the browser closing the WebSocket.
 
-Solution :
+Solution:
 
 ```python
 except ConnectionClosed:
     print("Flutter WebSocket closed")
 ```
 
-## 13. Première négociation SDP complète
+## 13. First complete SDP negotiation
 
-Logs obtenus :
+Resulting logs:
 
 ```text
 Flutter client connected
@@ -477,21 +477,21 @@ Received: answer
 Remote SDP answer applied
 ```
 
-Cela a validé :
+This validated:
 
 ```text
 WebSocket                   OK
-Création SDP offer          OK
-Envoi offer vers Flutter    OK
-Réception SDP answer        OK
-Application answer          OK
+SDP offer creation          OK
+Sending offer to Flutter    OK
+Receiving SDP answer        OK
+Applying answer          OK
 ```
 
-Mais la vidéo n’était toujours pas visible.
+But the video was still not visible.
 
-## 14. Erreur Flutter : `Unexpected null value`
+## 14. Flutter error: `Unexpected null value`
 
-Chrome DevTools a montré :
+Chrome DevTools showed:
 
 ```text
 WebSocket connected
@@ -502,33 +502,33 @@ SDP answer sent
 Video connection error: Unexpected null value
 ```
 
-Le problème était côté Flutter.
+The issue was on the Flutter side.
 
-Certaines propriétés ICE (`candidate`, `sdpMid`, `sdpMLineIndex`) peuvent être null. Une assertion `!` incorrecte provoquait l’erreur.
+Some ICE properties (`candidate`, `sdpMid`, `sdpMLineIndex`) can be null. An incorrect `!` assertion caused the error.
 
-Solution :
+Solution:
 
 ```text
 candidate null/empty
-    └── ignorer proprement
+    └── skip safely
 
 sdpMLineIndex null
-    └── fallback à 0
-        car une seule m-line vidéo existe
+    └── fall back to 0
+        because there is only one video m-line
 ```
 
-Après correction :
+After the fix:
 
 ```text
 Received: ice
 Remote ICE candidate added
 ```
 
-Flutter envoyait enfin ses candidats ICE au PYNQ.
+Flutter was finally sending its ICE candidates to the PYNQ.
 
-## 15. Ajout de logs détaillés ICE / WebRTC
+## 15. Adding detailed ICE / WebRTC logs
 
-Des callbacks ont été ajoutés pour suivre :
+Callbacks were added to monitor:
 
 ```text
 PYNQ ICE gathering state
@@ -536,110 +536,110 @@ PYNQ ICE connection state
 PYNQ WebRTC connection state
 ```
 
-On observait alors :
+The following states were then observed:
 
 ```text
 PYNQ ICE connection state: checking
 PYNQ WebRTC connection state: connecting
 ```
 
-Les candidats complets ont aussi été loggés.
+The full candidates were also logged.
 
-PYNQ :
+PYNQ:
 
 ```text
 candidate ... 192.168.200.111 ... typ host
 candidate ... 192.168.2.99 ... typ host
 ```
 
-Flutter/Chrome :
+Flutter/Chrome:
 
 ```text
 candidate ... xxxxxxxx-xxxx-xxxx.local ... typ host
 ```
 
-## 16. Obstacle mDNS
+## 16. The mDNS obstacle
 
-Chrome masquait l’IP locale derrière un nom mDNS de type :
+Chrome hid the local IP behind an mDNS name such as:
 
 ```text
 7d06e84f-2dbd-4fa6-8504-075f92a6ca26.local
 ```
 
-Tests sur PYNQ :
+Tests on the PYNQ:
 
 ```bash
 getent hosts <hostname>.local
 ping <hostname>.local
 ```
 
-Résultat : aucun nom résolu.
+Result: no names resolved.
 
-## 17. Installation d’Avahi
+## 17. Installing Avahi
 
-Au départ :
+Initially:
 
 ```text
 avahi-daemon.service could not be found
 hosts: files dns
 ```
 
-Installation :
+Installation:
 
 ```bash
 sudo apt install -y avahi-daemon avahi-utils libnss-mdns
 sudo systemctl enable --now avahi-daemon
 ```
 
-Après cela :
+Afterward:
 
 ```text
 avahi-daemon.service : active (running)
 hosts: files mdns4_minimal [NOTFOUND=return] dns
 ```
 
-Le PYNQ s’annonçait comme :
+The PYNQ advertised itself as:
 
 ```text
 pynq.local
 ```
 
-## 18. Avahi ne résolvait toujours pas Chrome
+## 18. Avahi still could not resolve Chrome
 
-Même après installation :
+Even after installation:
 
 ```bash
 avahi-resolve-host-name -4 <chrome-hostname>.local
 ```
 
-retournait :
+returned:
 
 ```text
 Timeout reached
 ```
 
-Cela a déplacé le diagnostic vers la topologie réseau.
+This shifted the investigation toward the network topology.
 
-## 19. Découverte du NAT VirtualBox
+## 19. Discovering VirtualBox NAT
 
-Dans Ubuntu :
+In Ubuntu:
 
 ```bash
 ip -br addr
 ```
 
-donnait :
+returned:
 
 ```text
 enp0s3    10.0.2.15/24
 ```
 
-La VM était derrière le NAT VirtualBox.
+The VM was behind VirtualBox NAT.
 
-Topologie :
+Topology:
 
 ```text
-Flutter / Chrome dans Ubuntu VM
+Flutter / Chrome in Ubuntu VM
            │
            │ 10.0.2.15
            ▼
@@ -652,11 +652,11 @@ Flutter / Chrome dans Ubuntu VM
         PYNQ-Z2
 ```
 
-Le WebSocket TCP sortant fonctionnait, mais WebRTC avait besoin d’un chemin UDP direct entre les peers.
+The outgoing TCP WebSocket worked, but WebRTC needed a direct UDP path between peers.
 
-## 20. Identification de l’interface Windows
+## 20. Identifying the Windows interface
 
-PowerShell a permis d’identifier :
+PowerShell was used to identify:
 
 ```text
 Ethernet 3
@@ -664,29 +664,29 @@ Realtek USB GbE Family Controller
 Status: Up
 ```
 
-Puis :
+Then:
 
 ```text
 Windows : 192.168.200.112/24
 PYNQ    : 192.168.200.111/24
 ```
 
-Le `Realtek USB GbE Family Controller` était donc l’interface physique à utiliser.
+The `Realtek USB GbE Family Controller` was therefore the physical interface to use.
 
-## 21. Solution réseau : deuxième carte VirtualBox en Bridge
+## 21. Network solution: a second VirtualBox adapter in bridged mode
 
-L’adaptateur 1 a été gardé en NAT pour Internet.
+Adapter 1 was kept in NAT mode for Internet access.
 
-Un Adapter 2 a été ajouté :
+An Adapter 2 was added:
 
 ```text
-Mode : Accès par pont / Bridged Adapter
-Nom  : Realtek USB GbE Family Controller
+Mode: Bridged Adapter
+Name : Realtek USB GbE Family Controller
 Type : Intel PRO/1000 MT Desktop
-Câble branché : oui
+Cable connected: yes
 ```
 
-Nouvelle topologie :
+New topology:
 
 ```text
                           Internet
@@ -698,53 +698,53 @@ Nouvelle topologie :
 
 PYNQ                    Windows                   Ubuntu VM
 192.168.200.111 ───── 192.168.200.112 ───── 192.168.200.110
-                           Ethernet            Adapter 2 Bridge
+                           Ethernet            Adapter 2 Bridged
 ```
 
-Après redémarrage :
+After restarting:
 
 ```text
 enp0s3   10.0.2.15/24
 enp0s8   192.168.200.110/24
 ```
 
-## 22. Validation du routage direct
+## 22. Validating direct routing
 
-Test :
+Test:
 
 ```bash
 ping -c 3 192.168.200.111
 ```
 
-Résultat :
+Result:
 
 ```text
 0% packet loss
 ```
 
-Puis :
+Then:
 
 ```bash
 ip route get 192.168.200.111
 ```
 
-Résultat :
+Result:
 
 ```text
 192.168.200.111 dev enp0s8 src 192.168.200.110
 ```
 
-Le trafic passait bien par l’interface bridgée.
+Traffic was correctly flowing through the bridged interface.
 
-## 23. Résultat final
+## 23. Final result
 
-Après le changement réseau, le flux vidéo réel s’est affiché dans Flutter avec le statut :
+After the network change, the live video stream appeared in Flutter with the status:
 
 ```text
 Connected
 ```
 
-Chaîne complète :
+Complete pipeline:
 
 ```text
 ┌───────────────────────┐
@@ -793,11 +793,11 @@ Chaîne complète :
 ┌───────────────────────┐
 │ RTCVideoView          │
 │ Status: Connected     │
-│ IMAGE CAMERA RÉELLE   │
+│ LIVE CAMERA IMAGE   │
 └───────────────────────┘
 ```
 
-Le signaling fonctionne en parallèle :
+Signaling runs in parallel:
 
 ```text
 Flutter                           PYNQ
@@ -810,31 +810,31 @@ Flutter                           PYNQ
    │====== WebRTC Connected ========│
 ```
 
-## 24. Techniques de débogage les plus utiles
+## 24. Most useful debugging techniques
 
-### Isoler chaque couche
+### Isolate each layer
 
-Au lieu de déboguer « WebRTC » comme un bloc :
+Instead of debugging “WebRTC” as a single block:
 
 ```text
-Caméra
+Camera
 → OpenCV
 → GStreamer
-→ Encodeur
+→ Encoder
 → RTP
 → WebRTC
 → WebSocket
 → SDP
 → ICE
-→ Réseau
+→ Network
 → Flutter
 ```
 
-chaque couche a été testée séparément.
+each layer was tested separately.
 
-### Lire les états au lieu de deviner
+### Read the states instead of guessing
 
-Exemples :
+Examples:
 
 ```text
 Opened: True
@@ -845,23 +845,23 @@ Received: ice
 ICE state: checking
 ```
 
-Chaque log réduisait l’espace de recherche.
+Each log narrowed down the search.
 
-### Inspecter les pads/caps GStreamer
+### Inspect GStreamer pads/caps
 
-Cela a permis de distinguer un problème d’auto-link d’un problème de compatibilité de codec.
+This helped distinguish an automatic linking issue from a codec compatibility issue.
 
-### Utiliser Chrome DevTools
+### Use Chrome DevTools
 
-La console a permis d’identifier immédiatement le bug `Unexpected null value` côté Flutter.
+The console immediately identified the `Unexpected null value` bug on the Flutter side.
 
-### Logger les candidats ICE complets
+### Log the full ICE candidates
 
-Cela a révélé que Chrome envoyait un nom `.local`, donc un problème mDNS/réseau.
+This revealed that Chrome was sending a `.local` name, pointing to an mDNS/network issue.
 
-### Tester le réseau indépendamment de WebRTC
+### Test the network independently of WebRTC
 
-Commandes clés :
+Key commands:
 
 ```bash
 ip -br addr
@@ -870,7 +870,7 @@ ip route get 192.168.200.111
 ping 192.168.200.111
 ```
 
-### Tester mDNS indépendamment du code
+### Test mDNS independently of the code
 
 ```bash
 getent hosts xxxxx.local
@@ -878,30 +878,30 @@ ping xxxxx.local
 avahi-resolve-host-name -4 xxxxx.local
 ```
 
-### Ne changer qu’une couche à la fois
+### Change only one layer at a time
 
-Pendant le diagnostic réseau, le codec, le pipeline caméra, le BLoC et la détection n’ont pas été modifiés.
+During the network investigation, the codec, camera pipeline, BLoC and detection were left unchanged.
 
-## 25. Tableau synthétique des obstacles
+## 25. Summary table of obstacles
 
-| Étape | Problème | Diagnostic | Solution |
+| Stage | Problem | Diagnosis | Solution |
 |---|---|---|---|
-| Caméra | première image sombre | auto-exposition | attendre / ignorer quelques frames |
-| Linux | permissions `/dev/video0` | groupe `video` | ajouter `xilinx` au groupe |
-| GStreamer | plugins WebRTC incomplets | `gst-inspect` | installer plugins / GI / nice |
-| RTP → WebRTC | auto-link impossible | inspection pads/caps | request pad + link manuel |
-| Jupyter | anciens callbacks | état persistant kernel | Restart Kernel + Run All |
-| Python | `pipeline_started` absent | traceback | initialiser `False` |
-| WebSocket | erreur 1005 au reload | fermeture normale navigateur | capturer `ConnectionClosed` |
-| Flutter | `Unexpected null value` | DevTools | gérer ICE nullable |
-| ICE | reste sur `checking` | logs d’états | logger candidats complets |
-| mDNS | `.local` non résolu | `getent`, `avahi-resolve` | installer Avahi |
-| Réseau | Avahi timeout malgré tout | `ip -br addr` | découverte NAT VirtualBox |
-| VirtualBox | VM isolée en `10.0.2.15` | routage | ajouter adaptateur bridgé |
-| Réseau final | besoin chemin direct | ping + route | VM `192.168.200.110` |
-| Résultat | aucune vidéo | toutes couches corrigées | WebRTC connecté ✅ |
+| Camera | dark first image | auto-exposure | wait / skip a few frames |
+| Linux | `/dev/video0` permissions | `video` group | add `xilinx` to the group |
+| GStreamer | incomplete WebRTC plugins | `gst-inspect` | install plugins / GI / nice |
+| RTP → WebRTC | automatic linking failed | pads/caps inspection | request pad + manual link |
+| Jupyter | old callbacks | persistent kernel state | Restart Kernel + Run All |
+| Python | missing `pipeline_started` | traceback | initialize to `False` |
+| WebSocket | error 1005 on reload | normal browser closure | catch `ConnectionClosed` |
+| Flutter | `Unexpected null value` | DevTools | handle nullable ICE properties |
+| ICE | stuck on `checking` | state logs | log full candidates |
+| mDNS | unresolved `.local` | `getent`, `avahi-resolve` | install Avahi |
+| Network | Avahi still times out | `ip -br addr` | discovery of VirtualBox NAT |
+| VirtualBox | VM isolated at `10.0.2.15` | routing | add a bridged adapter |
+| Final network | direct path needed | ping + route | VM `192.168.200.110` |
+| Result | no video | all layers fixed | WebRTC connected ✅ |
 
-## 26. Architecture actuelle
+## 26. Current architecture
 
 ```text
                                ┌─────────────────────────┐
@@ -912,7 +912,7 @@ Pendant le diagnostic réseau, le codec, le pipeline caméra, le BLoC et la dét
                                            │
                   ┌────────────────────────┴────────────────────────┐
                   │                                                 │
-                  │ WebRTC vidéo                                    │ WebSocket
+                  │ WebRTC video                                    │ WebSocket
                   │ RTP / SRTP / DTLS / ICE                         │ SDP / ICE
                   │                                                 │
                   ▼                                                 ▼
@@ -938,36 +938,36 @@ Pendant le diagnostic réseau, le codec, le pipeline caméra, le BLoC et la dét
                                                         Flutter BLoC
 ```
 
-## 27. Ce qui reste à faire
+## 27. Remaining work
 
-Le transport vidéo est maintenant fonctionnel, mais l’application complète de détection ne l’est pas encore.
+Video transport is now functional, but the full detection application is not yet.
 
-Étapes logiques :
+Logical next steps:
 
-1. stabiliser le lifecycle WebRTC ;
-2. améliorer la reconnexion après reload ;
-3. mieux gérer timeouts et erreurs ;
-4. conserver le flux vidéo indépendant ;
-5. remplacer progressivement `MockDetectionRepository` par la vraie détection TensorFlow/TFLite ;
-6. envoyer les métadonnées de détection vers Flutter ;
-7. plus tard seulement, envisager l’accélération FPGA.
+1. stabilize the WebRTC lifecycle;
+2. improve reconnection after reload;
+3. improve timeout and error handling;
+4. keep the video stream independent;
+5. progressively replace `MockDetectionRepository` with real TensorFlow/TFLite detection;
+6. send detection metadata to Flutter;
+7. only later, consider FPGA acceleration.
 
-## 28. Attention future : ne pas ouvrir `/dev/video0` deux fois
+## 28. Future consideration: do not open `/dev/video0` twice
 
-À l’arrivée de TensorFlow, il faudra éviter :
+When TensorFlow is introduced, avoid:
 
 ```text
 WebRTC    ──► /dev/video0
 TensorFlow──► /dev/video0
 ```
 
-Une architecture plus saine sera :
+A better architecture will be:
 
 ```text
                   /dev/video0
                        │
                        ▼
-                Capture unique
+                Single capture
                        │
                        ▼
                      tee
@@ -985,11 +985,11 @@ Une architecture plus saine sera :
 
 ## 29. Conclusion
 
-État actuel :
+Current state:
 
 ```text
-Caméra USB                  ✅
-Capture Linux               ✅
+USB camera                  ✅
+Linux capture               ✅
 GStreamer                   ✅
 H.264                       ✅
 RTP                         ✅
@@ -997,46 +997,46 @@ webrtcbin                   ✅
 WebSocket signaling         ✅
 SDP offer / answer          ✅
 ICE candidates              ✅
-mDNS / réseau               ✅
+mDNS / network               ✅
 VirtualBox bridge           ✅
 Flutter WebRTC              ✅
-Vidéo réelle affichée       ✅
+Live video displayed       ✅
 TensorFlow                  ⏳
-Détection réelle            ⏳
-Accélération FPGA           ⏳
+Real detection            ⏳
+FPGA acceleration           ⏳
 ```
 
-La principale leçon technique de cette phase est la méthode de débogage :
+The main technical lesson from this phase is the debugging method:
 
 ```text
-Observer
+Observe
    ↓
-Isoler une couche
+Isolate a layer
    ↓
-Ajouter un log précis
+Add a precise log
    ↓
-Tester indépendamment
+Test independently
    ↓
-Confirmer une hypothèse
+Confirm a hypothesis
    ↓
-Modifier une seule chose
+Change only one thing
    ↓
-Recommencer
+Repeat
 ```
 
-Le problème paraissait initialement être « la vidéo ne s’affiche pas », mais plusieurs problèmes indépendants se cumulaient :
+The problem initially seemed to be “the video does not appear”, but several independent issues were adding up:
 
 ```text
-permissions Linux
-+ plugins GStreamer
-+ request pads WebRTC
-+ lifecycle Jupyter
-+ null safety Flutter
+Linux permissions
++ GStreamer plugins
++ WebRTC request pads
++ Jupyter lifecycle
++ Flutter null safety
 + ICE
 + mDNS
-+ NAT VirtualBox
++ VirtualBox NAT
 ```
 
-Les traiter un par un a permis d’arriver à une architecture fonctionnelle, mais surtout compréhensible.
+Addressing them one by one led to a working architecture that, above all, is understandable.
 
-**État actuel : le flux caméra PYNQ → Flutter Web via WebRTC fonctionne.**
+**Current state: the PYNQ → Flutter Web camera stream via WebRTC works.**
