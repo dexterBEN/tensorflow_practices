@@ -1,4 +1,4 @@
-# Exo 0 — Person Detection: detailed recap up to a working WebRTC video stream
+# Exo 0 — Person Detection: detailed recap up to working WebRTC video and person detection
 
 ## Architecture overview
 
@@ -7,7 +7,7 @@
 
 ## 1. Initial objective
 
-The objective of the `exo_0_detection` project is to progressively build a small person detection application using a **PYNQ-Z2**, a **Tenveo USB camera**, **Flutter Web** and, eventually, **TensorFlow / TensorFlow Lite**.
+The objective of the `exo_0_detection` project is to progressively build a small person detection application using a **PYNQ-Z2**, a **Tenveo USB camera**, **Flutter Web** and **TensorFlow Lite** for CPU inference on the PYNQ.
 
 The general idea is as follows:
 
@@ -40,7 +40,9 @@ However, to avoid mixing several problems at once, the work was deliberately spl
              │                           │
          PYNQ-Z2                DetectionRepository
                                          │
-                                  Mock initially
+                              WebSocketDetectionRepository
+                                         │
+                                PYNQ TFLite results
 ```
 
 The first concrete objective was therefore:
@@ -52,8 +54,9 @@ At the current stage:
 - the live video stream works;
 - Flutter displays the camera feed correctly;
 - the video status changes to `Connected`;
-- detection is still simulated with a `MockDetectionRepository`;
-- TensorFlow is not integrated yet;
+- real person detection works on the PYNQ CPU with TensorFlow Lite and SSD MobileNet V1;
+- Flutter receives detection metadata over a separate WebSocket and draws bounding boxes over the video;
+- `WebSocketDetectionRepository` is the default detection source; `MockDetectionRepository` remains available for tests;
 - the FPGA/PL is not used for video processing yet.
 
 ## 2. Project structure
@@ -65,7 +68,11 @@ tensorflow_practices/
     │   └── Flutter Web application
     └── notebooks/
         ├── camera_test.ipynb
-        └── webrtc_stream.ipynb
+        ├── webrtc_stream.ipynb
+        ├── person_detection.ipynb
+        ├── person_detection_camera.ipynb
+        ├── webrtc_detection_stream.ipynb
+        └── media_pipeline.py
 ```
 
 Current responsibilities:
@@ -77,12 +84,18 @@ camera_test.ipynb
 webrtc_stream.ipynb
     └── camera capture + GStreamer + WebRTC + signaling
 
+person_detection.ipynb / person_detection_camera.ipynb
+    └── TFLite person detection on a fixed image / camera frames
+
+webrtc_detection_stream.ipynb + media_pipeline.py
+    └── shared camera capture + WebRTC video + CPU inference + detection metadata
+
 front_app/
     ├── Flutter UI
     ├── VideoView
     ├── WebRtcVideoRepository
     ├── DetectionBloc
-    └── MockDetectionRepository
+    └── WebSocketDetectionRepository + detection overlay
 ```
 
 ## 3. First step: validating camera access
@@ -178,7 +191,7 @@ Flutter  <──────────────  PYNQ
            WebRTC / RTP
 ```
 
-The WebSocket does not carry images; it only carries SDP and ICE.
+The signaling WebSocket does not carry images; it only carries SDP and ICE. Detection results use a separate metadata WebSocket, described in section 28.
 
 ## 6. Installing and validating GStreamer
 
@@ -312,7 +325,7 @@ speed-preset=ultrafast
 profile=constrained-baseline
 ```
 
-This choice also leaves CPU headroom for future TensorFlow detection.
+This choice was made to leave CPU headroom for the TFLite person detection subsequently added to the project.
 
 ## 8. Major obstacle: linking RTP → `webrtcbin`
 
@@ -904,43 +917,38 @@ During the network investigation, the codec, camera pipeline, BLoC and detection
 ## 26. Current architecture
 
 ```text
-                               ┌─────────────────────────┐
-                               │ Flutter Web             │
-                               │ Chrome                  │
-                               │ 192.168.200.110         │
-                               └───────────┬─────────────┘
-                                           │
-                  ┌────────────────────────┴────────────────────────┐
-                  │                                                 │
-                  │ WebRTC video                                    │ WebSocket
-                  │ RTP / SRTP / DTLS / ICE                         │ SDP / ICE
-                  │                                                 │
-                  ▼                                                 ▼
-                               ┌─────────────────────────┐
-                               │ PYNQ-Z2                 │
-                               │ 192.168.200.111         │
-                               └───────────┬─────────────┘
-                                           │
-                                       GStreamer
-                                           │
-                        ┌──────────────────┴─────────────────┐
-                        │                                    │
-                        ▼                                    ▼
-                /dev/video0                          Future AI path
-                        │                                    │
-                        ▼                                    ▼
-                 Tenveo Camera                       TensorFlow/TFLite
-                                                             │
-                                                             ▼
-                                                     Detection metadata
-                                                             │
-                                                             ▼
-                                                        Flutter BLoC
+                Tenveo USB camera — PYNQ /dev/video0
+                                  │
+                                  ▼
+                    Single GStreamer capture
+                         JPEG decode → tee
+                        ┌─────────┴──────────┐
+                        │                    │
+                        ▼                    ▼
+                  Video branch            AI branch
+                  H.264 → RTP          BGR → appsink
+                        │                    │
+                        ▼                    ▼
+                    webrtcbin        SSD MobileNet V1
+                        │           TensorFlow Lite / CPU
+                        │                    │
+                        │                    ▼
+                        │            Detection JSON
+                        │            WebSocket :8766
+                        ▼                    ▼
+                   RTCVideoView   WebSocketDetectionRepository
+                        │                    │
+                        │               DetectionBloc
+                        └─────────┬──────────┘
+                                  ▼
+                      Flutter video + bounding boxes
 ```
+
+WebRTC signaling remains on port `8765`. Port `8766` carries detection metadata only; the video is transported by WebRTC. The FPGA/PL is not used for inference.
 
 ## 27. Remaining work
 
-Video transport is now functional, but the full detection application is not yet.
+Video transport and real CPU person detection are functional. Remaining work concerns robustness and performance.
 
 Logical next steps:
 
@@ -948,40 +956,59 @@ Logical next steps:
 2. improve reconnection after reload;
 3. improve timeout and error handling;
 4. keep the video stream independent;
-5. progressively replace `MockDetectionRepository` with real TensorFlow/TFLite detection;
-6. send detection metadata to Flutter;
-7. only later, consider FPGA acceleration.
+5. only later, consider FPGA acceleration.
 
-## 28. Future consideration: do not open `/dev/video0` twice
+## 28. How person detection works
 
-When TensorFlow is introduced, avoid:
+The combined implementation is in [`notebooks/webrtc_detection_stream.ipynb`](notebooks/webrtc_detection_stream.ipynb), using [`notebooks/media_pipeline.py`](notebooks/media_pipeline.py). The notebook and module must be in the same directory on the PYNQ.
 
-```text
-WebRTC    ──► /dev/video0
-TensorFlow──► /dev/video0
+### Shared capture and CPU inference
+
+One GStreamer source owns `/dev/video0`. After JPEG decoding, a `tee` feeds the video and AI branches. Inference reads frames from `appsink`; it does not open the camera a second time. The AI queue and `appsink` each keep at most one waiting frame and discard older frames, limiting accumulation while the video branch continues.
+
+The model is SSD MobileNet V1 with COCO labels, loaded with `tflite_runtime.interpreter.Interpreter`. The PYNQ uses the Cortex-A9-compatible VFPv3 runtime; its build and verification procedure is documented in [`tools/tflite_cortex_a9/README.md`](tools/tflite_cortex_a9/README.md).
+
+For each inference:
+
+1. Read a BGR frame from the shared `appsink`.
+2. Convert BGR to RGB, resize to **300 × 300**, and create a `uint8` tensor of shape `[1, 300, 300, 3]`.
+3. Run `interpreter.invoke()` on the PYNQ CPU.
+4. Read the SSD boxes, classes, scores and detection count. Keep the `person` class with confidence **at least 0.5**.
+5. Convert the normalized box coordinates to pixel coordinates in the original captured frame.
+6. Publish the result to Flutter over the metadata WebSocket on port `8766`.
+
+### Metadata and Flutter display
+
+An illustrative result message is:
+
+```json
+{
+  "type": "detection",
+  "frame": {"width": 320, "height": 240},
+  "inference_ms": 1120.0,
+  "persons": [
+    {
+      "label": "person",
+      "confidence": 0.82,
+      "bbox": {"x1": 40, "y1": 15, "x2": 210, "y2": 235}
+    }
+  ]
+}
 ```
 
-A better architecture will be:
+`frame` describes the original image dimensions, and `bbox` uses pixels in that image. `inference_ms` measures `invoke()` only, rather than the complete capture-to-display delay. A valid result with no person has an empty `persons` list.
 
-```text
-                  /dev/video0
-                       │
-                       ▼
-                Single capture
-                       │
-                       ▼
-                     tee
-                ┌──────┴──────┐
-                │             │
-                ▼             ▼
-          WebRTC branch    AI branch
-                │             │
-                ▼             ▼
-             Flutter       TensorFlow
-                              │
-                              ▼
-                        Detection metadata
-```
+`WebSocketDetectionRepository` parses these messages into `DetectionResult` objects and passes them to `DetectionBloc`. Flutter displays the detection count, confidence, boxes and inference time. `DetectionOverlay` scales and centers the boxes to match the video viewport. Results and video arrive independently: the latest boxes are displayed without synchronization to an exact video frame.
+
+The application's `ONLINE` indicator means that the metadata WebSocket is connected; receiving an inference result is a separate event.
+
+### Running detection in the current notebook
+
+Select `TEST_MODE = "inference"` in the configuration cell, then execute the preparation cells through section **6. Serveurs WebRTC et métadonnées** and connect Flutter. The preliminary single-frame inference validates the model but does not publish results to the application.
+
+Section **7. Mesure du mode sélectionné pendant trois minutes** publishes live detections. It uses one inference worker, with a configured interval of **3 seconds** between job starts; a slower job reduces the update rate. The `video_only` and `ai_branch_only` modes do not run inference during this measurement.
+
+This notebook currently runs inference for a **180-second measurement**, then stops inference while leaving the video active. An in-flight inference may finish after the measurement window. For another run, stop the session with the final shutdown cell and rebuild it before rerunning the measurement.
 
 ## 29. Conclusion
 
@@ -1001,8 +1028,9 @@ mDNS / network               ✅
 VirtualBox bridge           ✅
 Flutter WebRTC              ✅
 Live video displayed       ✅
-TensorFlow                  ⏳
-Real detection            ⏳
+TensorFlow Lite / CPU       ✅
+Real person detection      ✅
+Detection metadata / boxes ✅
 FPGA acceleration           ⏳
 ```
 
@@ -1039,4 +1067,4 @@ Linux permissions
 
 Addressing them one by one led to a working architecture that, above all, is understandable.
 
-**Current state: the PYNQ → Flutter Web camera stream via WebRTC works.**
+**Current state: the PYNQ → Flutter Web camera stream works, together with real TFLite CPU person detection and bounding boxes displayed in Flutter.**
