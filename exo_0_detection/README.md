@@ -2,8 +2,7 @@
 
 ## Architecture overview
 
-<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/6b031415-fdff-406a-9b32-8ac444741e31" />
-
+<img width="1619" height="971" alt="image" src="https://github.com/user-attachments/assets/24f7c4b1-6bb6-47d1-a5ae-c8848ee52be7" />
 
 ## 1. Initial objective
 
